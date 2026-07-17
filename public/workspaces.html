@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Çalışma Alanları — CaYaSport Panel</title>
+    <link rel="icon" type="image/svg+xml" href="/assets/logo.svg" />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body data-page="workspaces" class="workspace-body">
+    <main class="workspace-layout">
+      <header class="workspace-head">
+        <a href="./" class="workspace-brand" aria-label="Anasayfa">
+          <img src="/assets/logo.svg" alt="" onerror="this.onerror=null;this.src='/assets/logo.svg';" />
+          <div>
+            <h1>Çalışma Alanları</h1>
+            <p>Yönetmek istediğiniz alanı seçin ya da yeni bir tane oluşturun.</p>
+          </div>
+        </a>
+        <div class="workspace-user">
+          <span class="user-pill" id="workspaceUser" title=""></span>
+          <button type="button" class="btn btn-ghost" id="workspaceLogout">Çıkış yap</button>
+        </div>
+      </header>
+
+      <section class="workspace-meta">
+        <span class="chip" id="workspaceCount">Yükleniyor…</span>
+      </section>
+
+      <section class="workspace-grid" id="workspaceGrid">
+        <div class="empty-state">Çalışma alanları yükleniyor…</div>
+      </section>
+
+      <section id="sharedHost"></section>
+    </main>
+
+    <div id="modal-root"></div>
+    <div id="toast-root" aria-live="polite"></div>
+
+    <script src="/js/auth.js?v=20260523-4"></script>
+    <script src="/js/workspaces.js?v=20260523-4"></script>
+  </body>
+</html>

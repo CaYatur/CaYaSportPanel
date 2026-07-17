@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Giriş — CaYaSport Panel</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="icon" type="image/svg+xml" href="/assets/logo.svg" />
+  </head>
+  <body data-page="login" class="login-body">
+    <main class="login-layout">
+      <section class="login-panel">
+        <section class="form-card">
+          <a href="./" class="login-brand" aria-label="Anasayfaya dön">
+            <img src="/assets/logo.svg" alt="" />
+            <div>
+              <h1>CaYaSport Panel</h1>
+              <p>Spor salonu ve kurs yönetim sistemi</p>
+            </div>
+          </a>
+
+          <hr class="login-divider" />
+
+          <div class="form-heading">
+            <h2 class="login-title">CaYaDev ile giriş</h2>
+            <span class="helper">Yetkili CaYaDev hesabınız ile devam edin.</span>
+          </div>
+
+          <a href="auth/cayadev" class="btn btn-primary btn-lg full-width" id="oauthLoginButton">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            <span>CaYaDev ile giriş yap</span>
+          </a>
+          <p id="loginMessage" class="form-message" aria-live="polite"></p>
+
+          <ul class="login-perks">
+            <li>
+              <span class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              <span>Tek tıkla güvenli OAuth girişi</span>
+            </li>
+            <li>
+              <span class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              <span>Veriler hesabınıza özel, şifreli</span>
+            </li>
+            <li>
+              <span class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              <span>Birden fazla cihazda senkron</span>
+            </li>
+          </ul>
+        </section>
+
+        <p class="login-back">
+          <a href="./">← Anasayfaya dön</a>
+        </p>
+
+        <a href="https://cayadev.com" target="_blank" rel="noopener" class="login-cayadev" aria-label="CaYaDev">
+          <small>Geliştiren</small>
+          <span class="login-cayadev-badge">
+            <img src="https://cayadev.com/css/cayadev.svg" alt="CaYaDev"
+                 onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('span'),{textContent:'CaYaDev',className:'login-cayadev-fallback'}));" />
+          </span>
+        </a>
+      </section>
+    </main>
+    <script src="/js/storage.js?v=20260524-1"></script>
+    <script src="/js/auth.js?v=20260523-4"></script>
+  </body>
+</html>

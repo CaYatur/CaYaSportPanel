@@ -1,0 +1,21 @@
+{
+  "name": "cayasport-panel",
+  "version": "1.0.0",
+  "description": "CaYaSport Panel - spor salonu, kurs ve branş yönetim sistemi",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "sports",
+    "gym",
+    "student-management",
+    "express",
+    "vanilla-js"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

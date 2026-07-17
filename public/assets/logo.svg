@@ -1,0 +1,12 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CaYaSport Panel">
+  <rect width="128" height="128" rx="22" fill="#111827"/>
+  <rect x="0" y="0" width="128" height="62" rx="22" fill="url(#cysHighlight)"/>
+  <path d="M92 24L46 24L22 48L22 80L46 104L92 104L104 92L52 92L34 74L34 54L52 36L104 36Z" fill="#DC2727"/>
+  <path d="M68 50L68 78L92 64Z" fill="#FFFFFF"/>
+  <defs>
+    <linearGradient id="cysHighlight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+</svg>
