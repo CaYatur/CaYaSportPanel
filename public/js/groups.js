@@ -583,13 +583,15 @@
       return;
     }
 
-    const openEnrollments = app.openEnrollments((enrollment) => enrollment.groupId === groupId);
+    const openEnrollments = storage.getData(storage.KEYS.enrollments, []).filter((enrollment) => {
+      return enrollment.groupId === groupId && (enrollment.status === "Aktif" || enrollment.status === "Dondurulmuş");
+    });
     if (openEnrollments.length) {
-      const who = app.describeStudents(openEnrollments);
-      app.toast(
-        `Silinemez: ${openEnrollments.length} açık öğrenci kaydı bu grupta.${who ? " " + who + "." : ""} Önce öğrencileri gruptan çıkarın.`,
-        "error"
-      );
+      if (!app.access.canEdit("students")) {
+        app.toast("Bu grupta açık öğrenci kaydı var. Kapatmak için öğrenci yetkisi gerekir.", "error");
+        return;
+      }
+      openGroupDeleteWarning(group, openEnrollments);
       return;
     }
 
@@ -603,6 +605,56 @@
     app.toast("Pasif grup silindi.", "success");
     const branchName = (storage.getData(storage.KEYS.branches, []).find((item) => item.id === group.branchId) || {}).name || group.branchId;
     window.CaYaAudit?.log("groups", "delete", `Pasif grup silindi: ${group.name} | Branş: ${branchName}`);
+  }
+
+  function openGroupDeleteWarning(group, openEnrollments) {
+    const students = storage.getData(storage.KEYS.students, []);
+    const studentMap = new Map(students.map((student) => [student.id, student]));
+    const names = [];
+    const seen = new Set();
+    openEnrollments.forEach((enrollment) => {
+      if (seen.has(enrollment.studentId)) return;
+      seen.add(enrollment.studentId);
+      const student = studentMap.get(enrollment.studentId);
+      names.push(student ? app.getStudentName(student) : "Kartı bulunamayan kayıt");
+    });
+    app.openModal("Grup silinemedi", `
+      <p>"${app.escapeHtml(group.name)}" grubunda kapatılmamış kayıt var. Onaylarsanız bu kayıtlar kapatılır ve grup silinir. Öğrenci kartları durur.</p>
+      <ul>${names.map((name) => `<li>${app.escapeHtml(name)}</li>`).join("")}</ul>
+      <div class="actions">
+        <button type="button" class="btn" data-modal-close>Vazgeç</button>
+        <button type="button" class="btn btn-danger" id="confirmGroupDelete">Kayıtları kapat ve sil</button>
+      </div>
+    `);
+    app.$("#confirmGroupDelete")?.addEventListener("click", () => closeGroupLinksAndDelete(group.id));
+  }
+
+  function closeGroupLinksAndDelete(groupId) {
+    const groups = storage.getData(storage.KEYS.groups, []);
+    const group = groups.find((item) => item.id === groupId);
+    if (!group) return;
+
+    const today = storage.todayISO();
+    const enrollments = storage.getData(storage.KEYS.enrollments, []);
+    let closed = 0;
+    const nextEnrollments = enrollments.map((enrollment) => {
+      if (enrollment.groupId !== groupId) return enrollment;
+      if (enrollment.status !== "Aktif" && enrollment.status !== "Dondurulmuş") return enrollment;
+      closed += 1;
+      return { ...enrollment, status: "Ayrıldı", endDate: enrollment.endDate || today };
+    });
+    if (closed) storage.setData(storage.KEYS.enrollments, nextEnrollments);
+    if (window.CaYaEngine) window.CaYaEngine.runAll();
+
+    storage.setData(
+      storage.KEYS.groups,
+      groups.filter((item) => item.id !== groupId)
+    );
+    app.closeModal();
+    renderGroupsPage();
+    app.toast("Pasif grup silindi.", "success");
+    const branchName = (storage.getData(storage.KEYS.branches, []).find((item) => item.id === group.branchId) || {}).name || group.branchId;
+    window.CaYaAudit?.log("groups", "delete", `Pasif grup silindi: ${group.name} | Branş: ${branchName} | ${closed} kayıt kapatıldı`);
   }
 
   function getGroupMemberships(groupId) {

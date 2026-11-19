@@ -278,30 +278,102 @@
     }
 
     const linkedGroups = storage.getData(storage.KEYS.groups, []).filter((group) => group.branchId === branchId);
-    const openEnrollments = app.openEnrollments((enrollment) => enrollment.branchId === branchId);
+    const openEnrollments = openBranchEnrollments(branchId);
 
     if (linkedGroups.length || openEnrollments.length) {
-      const who = app.describeStudents(openEnrollments);
-      const activeGroupCount = linkedGroups.filter((group) => group.status === "Aktif").length;
-      app.toast(
-        `Silinemez: ${linkedGroups.length} grup (${activeGroupCount} aktif) ve ${openEnrollments.length} açık öğrenci kaydı bu branşa bağlı.${who ? " " + who + "." : ""} Önce grupları silin ve açık kayıtları kapatın.`,
-        "error"
-      );
+      if (!app.access.canEdit("students") || !app.access.canEdit("groups")) {
+        app.toast("Bu branşa bağlı açık kayıt var. Kapatmak için öğrenci ve grup yetkisi gerekir.", "error");
+        return;
+      }
+      openBranchDeleteWarning(branch, linkedGroups, openEnrollments);
       return;
     }
 
     if (!confirm(`"${branch.name}" pasif branşı kalıcı olarak silinsin mi? Bu işlem geri alınamaz.`)) return;
+    removeBranch(branch, 0, 0);
+  }
 
+  function openBranchEnrollments(branchId) {
+    return storage.getData(storage.KEYS.enrollments, []).filter((enrollment) => {
+      return enrollment.branchId === branchId && (enrollment.status === "Aktif" || enrollment.status === "Dondurulmuş");
+    });
+  }
+
+  function openBranchDeleteWarning(branch, linkedGroups, openEnrollments) {
+    const names = enrollmentStudentNames(openEnrollments);
+    const groupNames = linkedGroups.map((group) => group.name);
+    const effects = [];
+    if (names.length) effects.push("bu öğrenci kayıtları kapatılır");
+    if (groupNames.length) effects.push("bağlı gruplar silinir");
+    effects.push("branş silinir");
+    app.openModal("Branş silinemedi", `
+      <p>"${app.escapeHtml(branch.name)}" branşına bağlı kayıt duruyor. Onaylarsanız ${effects.join(", ").replace(/, ([^,]*)$/, " ve $1")}. Öğrenci kartları durur.</p>
+      ${names.length ? `<p><strong>Açık kayıtlar</strong></p><ul>${names.map((name) => `<li>${app.escapeHtml(name)}</li>`).join("")}</ul>` : ""}
+      ${groupNames.length ? `<p><strong>Silinecek gruplar</strong></p><ul>${groupNames.map((name) => `<li>${app.escapeHtml(name)}</li>`).join("")}</ul>` : ""}
+      <div class="actions">
+        <button type="button" class="btn" data-modal-close>Vazgeç</button>
+        <button type="button" class="btn btn-danger" id="confirmBranchDelete">Kayıtları kapat ve sil</button>
+      </div>
+    `);
+    app.$("#confirmBranchDelete")?.addEventListener("click", () => {
+      closeBranchLinksAndDelete(branch.id);
+    });
+  }
+
+  function enrollmentStudentNames(enrollments) {
+    const students = storage.getData(storage.KEYS.students, []);
+    const studentMap = new Map(students.map((student) => [student.id, student]));
+    const names = [];
+    const seen = new Set();
+    enrollments.forEach((enrollment) => {
+      if (seen.has(enrollment.studentId)) return;
+      seen.add(enrollment.studentId);
+      const student = studentMap.get(enrollment.studentId);
+      names.push(student ? app.getStudentName(student) : "Kartı bulunamayan kayıt");
+    });
+    return names;
+  }
+
+  function closeBranchLinksAndDelete(branchId) {
+    const branch = storage.getData(storage.KEYS.branches, []).find((item) => item.id === branchId);
+    if (!branch) return;
+
+    const today = storage.todayISO();
+    const enrollments = storage.getData(storage.KEYS.enrollments, []);
+    let closed = 0;
+    const nextEnrollments = enrollments.map((enrollment) => {
+      if (enrollment.branchId !== branchId) return enrollment;
+      if (enrollment.status !== "Aktif" && enrollment.status !== "Dondurulmuş") return enrollment;
+      closed += 1;
+      return { ...enrollment, status: "Ayrıldı", endDate: enrollment.endDate || today };
+    });
+    if (closed) storage.setData(storage.KEYS.enrollments, nextEnrollments);
+
+    const groups = storage.getData(storage.KEYS.groups, []);
+    const remainingGroups = groups.filter((group) => group.branchId !== branchId);
+    const removedGroups = groups.length - remainingGroups.length;
+    if (removedGroups) storage.setData(storage.KEYS.groups, remainingGroups);
+
+    if (window.CaYaEngine) window.CaYaEngine.runAll();
+    removeBranch(branch, closed, removedGroups);
+  }
+
+  function removeBranch(branch, closedEnrollments, removedGroups) {
     storage.setData(
       storage.KEYS.branches,
-      branches.filter((item) => item.id !== branchId)
+      storage.getData(storage.KEYS.branches, []).filter((item) => item.id !== branch.id)
     );
+    app.closeModal();
     renderBranchesPage();
     app.toast("Pasif branş silindi.", "success");
+    const extra = [
+      closedEnrollments ? `${closedEnrollments} kayıt kapatıldı` : "",
+      removedGroups ? `${removedGroups} grup silindi` : ""
+    ].filter(Boolean).join(" | ");
     window.CaYaAudit?.log(
       "branches",
       "delete",
-      `Pasif branş silindi: ${branch.name} | Aylık ücret: ${branch.monthlyFee ? app.formatCurrency(branch.monthlyFee) : "-"}`
+      `Pasif branş silindi: ${branch.name} | Aylık ücret: ${branch.monthlyFee ? app.formatCurrency(branch.monthlyFee) : "-"}${extra ? " | " + extra : ""}`
     );
   }
 
