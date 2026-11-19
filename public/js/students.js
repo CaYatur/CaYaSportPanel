@@ -295,7 +295,8 @@
                     ${canEdit ? `<button class="btn" data-action="edit" data-id="${student.id}">Düzenle</button>` : ""}
                     ${canEdit ? (student.status === "Aktif"
                       ? `<button class="btn btn-warning" data-action="passive" data-id="${student.id}">Pasife al</button>`
-                      : `<button class="btn btn-primary" data-action="activate" data-id="${student.id}">Aktife al</button>`) : ""
+                      : `<button class="btn btn-primary" data-action="activate" data-id="${student.id}">Aktife al</button>
+                         ${student.status === "Pasif" ? `<button class="btn btn-danger" data-action="delete" data-id="${student.id}">Sil</button>` : ""}`) : ""
                     }
                   </div>
                 </td>
@@ -401,6 +402,7 @@
       if (button.dataset.action === "edit") openStudentForm(id);
       if (button.dataset.action === "passive") makeStudentPassive(id);
       if (button.dataset.action === "activate") makeStudentActive(id);
+      if (button.dataset.action === "delete") deletePassiveStudent(id);
     });
 
     renderRows();
@@ -787,6 +789,52 @@
     window.CaYaAudit?.log("students", "activate", `Öğrenci aktifleştirildi: ${student.firstName} ${student.lastName} | Telefon: ${student.phone || "-"}`);
   }
 
+  function deletePassiveStudent(studentId) {
+    if (!app.access.canEdit("students")) return;
+
+    const students = storage.getData(storage.KEYS.students, []);
+    const student = students.find((item) => item.id === studentId);
+    if (!student) return;
+
+    if (student.status !== "Pasif") {
+      app.toast("Yalnızca pasif öğrenciler silinebilir. Önce pasife alın.", "error");
+      return;
+    }
+
+    const openEnrollments = app.openEnrollments((enrollment) => enrollment.studentId === studentId);
+    if (openEnrollments.length) {
+      const groups = storage.getData(storage.KEYS.groups, []);
+      const names = openEnrollments.slice(0, 3).map((enrollment) => {
+        const group = groups.find((item) => item.id === enrollment.groupId);
+        return group ? group.name : "Grup";
+      });
+      const extra = openEnrollments.length > 3 ? ` ve ${openEnrollments.length - 3} kayıt daha` : "";
+      app.toast(`Silinemez: ${names.join(", ")}${extra} hâlâ açık. Önce branş kaydını kapatın.`, "error");
+      return;
+    }
+
+    const openPayments = storage.normalizePayments(storage.getData(storage.KEYS.payments, [])).filter((payment) => {
+      return payment.studentId === studentId && payment.status !== "İptal" && Number(payment.remainingAmount || 0) > 0;
+    });
+    if (openPayments.length) {
+      app.toast(`Silinemez: ${openPayments.length} açık ödeme planı var. Önce tahsil edin veya iptal edin.`, "error");
+      return;
+    }
+
+    const name = app.getStudentName(student);
+    if (!confirm(`"${name}" pasif öğrenci kartı silinsin mi? Kart listeden kalkar. Kapanmış ödeme ve yoklama kayıtları durur. Bu işlem geri alınamaz.`)) return;
+
+    if (student.photo) storage.deleteStudentImage(student.photo).catch(() => {});
+    storage.setData(
+      storage.KEYS.students,
+      students.filter((item) => item.id !== studentId)
+    );
+    app.closeModal();
+    renderStudentsPage();
+    app.toast("Pasif öğrenci silindi.", "success");
+    window.CaYaAudit?.log("students", "delete", `Pasif öğrenci silindi: ${student.firstName} ${student.lastName} | Telefon: ${student.phone || "-"}`);
+  }
+
   function enrollmentFormHtml(student, editingEnrollment) {
     const allStoredBranches = storage.getData(storage.KEYS.branches, []);
     const allStoredGroups = storage.getData(storage.KEYS.groups, []);
@@ -1126,6 +1174,9 @@
           <strong>${app.escapeHtml(app.getStudentName(student))}</strong>
           <small>${app.escapeHtml(student.id)} · ${app.escapeHtml(student.phone || "-")}</small>
         </div>
+        ${app.access.canEdit("students") && student.status === "Pasif"
+          ? `<button type="button" class="btn btn-danger" id="deletePassiveStudent">Sil</button>`
+          : ""}
       </div>
 
       ${studentFinanceAttendanceSummaryHtml(student.id)}
@@ -1174,6 +1225,9 @@
     app.openModal("Öğrenci detayı", detailHtml(student, null, { focus }));
     app.hydrateStudentPhotos(app.$("#modal-root"));
     bindStudentDetail(student);
+    app.$("#deletePassiveStudent")?.addEventListener("click", () => {
+      deletePassiveStudent(student.id);
+    });
   }
 
   function rebindEnrollmentForm(student, editingEnrollment) {

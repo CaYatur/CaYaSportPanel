@@ -1072,6 +1072,36 @@ function registryLockKey(accountRef) {
   return `${accountDirectoryName(accountRef)}::registry`;
 }
 
+// A normal edit sends the whole list back. Reject a write that drops most
+// existing records, which is what happened when a short student list replaced
+// a full workspace. One-at-a-time deletes stay under the threshold. A deliberate
+// wipe still goes through POST /api/data/reset.
+const SHRINK_GUARDED_RESOURCES = new Set([
+  "students",
+  "branches",
+  "groups",
+  "teachers",
+  "enrollments",
+  "attendance",
+  "payments",
+  "teacherSalaries"
+]);
+
+function assertSafeReplacement(resource, previous, next) {
+  if (!SHRINK_GUARDED_RESOURCES.has(resource)) return;
+  if (!Array.isArray(previous) || !Array.isArray(next)) return;
+  if (previous.length < 8) return;
+  const nextIds = new Set(next.map((item) => item && item.id).filter(Boolean));
+  const kept = previous.filter((item) => item && item.id && nextIds.has(item.id)).length;
+  const removed = previous.length - kept;
+  if (removed >= 8 && kept < previous.length * 0.5) {
+    throw requestError(
+      "Bu kayıt, listedeki kayıtların büyük kısmını sileceği için durduruldu. Sayfayı yenileyip işlemi tekrar deneyin.",
+      409
+    );
+  }
+}
+
 function validateResource(resource, value) {
   if (!resourceKeys.includes(resource)) {
     const error = new Error("Unknown resource");
@@ -1480,7 +1510,10 @@ app.put("/api/data/:resource", apiLimiter, mutationLimiter, requireAuth, require
           ? []
           : appendAuditEntries(current.auditLog, incoming, req.session.user);
       } else {
-        current[resource] = req.ws.isOwner ? value : mergeResourceForScope(resource, current, value, req.ws);
+        const previous = current[resource];
+        const next = req.ws.isOwner ? value : mergeResourceForScope(resource, current, value, req.ws);
+        assertSafeReplacement(resource, previous, next);
+        current[resource] = next;
       }
       return writeWorkspaceData(req.ws.ownerRef, req.ws.workspaceId, current);
     });
@@ -1590,7 +1623,19 @@ app.get("/schedule/:ownerId/:workspaceId/:branchId/:shareId", (req, res) => {
 app.get("/api/workspaces", apiLimiter, requireAuth, async (req, res, next) => {
   try {
     const registry = await ensureWorkspaces(req.session.user);
-    const owned = registry.workspaces.map((ws) => ({ workspaceId: ws.id, name: ws.name, createdAt: ws.createdAt }));
+    const grantsFile = await readGrants(req.session.user);
+    const owned = registry.workspaces.map((ws) => ({
+      workspaceId: ws.id,
+      name: ws.name,
+      createdAt: ws.createdAt,
+      grants: (grantsFile.grants || [])
+        .filter((grant) => grant.workspaceId === ws.id)
+        .map((grant) => ({
+          email: grant.granteeEmail,
+          label: grant.granteeLabel || "",
+          role: grant.role
+        }))
+    }));
     const shared = await listSharedWorkspaces(req.session.user.email);
     const activeRef = getActiveWorkspaceRef(req);
     res.json({

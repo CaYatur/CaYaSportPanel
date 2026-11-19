@@ -416,6 +416,47 @@
     return storage.getData(storage.KEYS.enrollments, []).filter((item) => item.status === "Aktif");
   }
 
+  // Active enrollment rows whose student card still exists and is active.
+  // A missing or passive student must not keep a branch or group from being deleted.
+  function liveActiveEnrollments(predicate) {
+    const students = storage.getData(storage.KEYS.students, []);
+    const studentMap = new Map(students.map((student) => [student.id, student]));
+    return activeEnrollments().filter((item) => {
+      const student = studentMap.get(item.studentId);
+      return Boolean(student && student.status === "Aktif" && (!predicate || predicate(item, student)));
+    });
+  }
+
+  // Open registration rows that still have a student card. A missing card does
+  // not block deletion. A passive or frozen student with an open row still does.
+  function openEnrollments(predicate) {
+    const students = storage.getData(storage.KEYS.students, []);
+    const studentMap = new Map(students.map((student) => [student.id, student]));
+    return storage.getData(storage.KEYS.enrollments, []).filter((item) => {
+      if (!item || (item.status !== "Aktif" && item.status !== "Dondurulmuş")) return false;
+      const student = studentMap.get(item.studentId);
+      if (!student) return false;
+      return !predicate || predicate(item, student);
+    });
+  }
+
+  function describeStudents(enrollments, limit = 3) {
+    const students = storage.getData(storage.KEYS.students, []);
+    const studentMap = new Map(students.map((student) => [student.id, student]));
+    const names = [];
+    const seen = new Set();
+    (enrollments || []).forEach((item) => {
+      if (!item || seen.has(item.studentId)) return;
+      seen.add(item.studentId);
+      const student = studentMap.get(item.studentId);
+      if (student) names.push(getStudentName(student));
+    });
+    const shown = names.slice(0, limit);
+    const extra = names.length - shown.length;
+    if (!shown.length) return "";
+    return shown.join(", ") + (extra > 0 ? ` ve ${extra} kişi daha` : "");
+  }
+
   function getGroupStudentCount(groupId) {
     const students = storage.getData(storage.KEYS.students, []);
     const studentMap = new Map(students.map((student) => [student.id, student]));
@@ -1121,6 +1162,9 @@
     attendanceRatio,
     paymentSummaryForStudent,
     activeEnrollments,
+    liveActiveEnrollments,
+    openEnrollments,
+    describeStudents,
     applyTheme,
     enhanceTables,
     groupSessions,

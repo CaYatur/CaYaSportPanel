@@ -110,7 +110,7 @@
       <section class="page-header">
         <div>
           <h2>Yetkiler</h2>
-          <p><strong>${app.escapeHtml((ctx && ctx.workspaceName) || "Bu çalışma alanı")}</strong> için başkalarına kapsamlı erişim verin. Yetkili kişi, kendi CaYaDev hesabıyla giriş yaptığında bu alanı görür.</p>
+          <p><strong>${app.escapeHtml((ctx && ctx.workspaceName) || "Bu çalışma alanı")}</strong> başka bir kişiye açılır. O kişi kendi CaYaDev hesabıyla girer ve yalnız bu alanı görür. Sizin diğer çalışma alanlarınız ona açılmaz. Siz sahip olduğunuz için hepsini görmeye devam edersiniz. Çalışma alanının ayrı bir şifresi yoktur.</p>
         </div>
         <button class="btn btn-primary" id="newGrantButton">Yetki ver</button>
       </section>
@@ -165,13 +165,14 @@
           </label>
           <label class="span-2">Rol
             <select name="role" id="grantRole">
-              <option value="yönetici" ${role === "yönetici" ? "selected" : ""}>Yönetici (geniş yetki)</option>
-              <option value="eğitmen" ${role === "eğitmen" ? "selected" : ""}>Eğitmen (öğrenci + yoklama)</option>
-              <option value="görüntüleyici" ${role === "görüntüleyici" ? "selected" : ""}>Görüntüleyici (sadece görür)</option>
-              <option value="özel" ${role === "özel" ? "selected" : ""}>Özel (modül modül ayarla)</option>
+              <option value="yönetici" ${role === "yönetici" ? "selected" : ""}>Yönetici — alanı yönetir</option>
+              <option value="eğitmen" ${role === "eğitmen" ? "selected" : ""}>Eğitmen — öğrenci ve yoklama</option>
+              <option value="görüntüleyici" ${role === "görüntüleyici" ? "selected" : ""}>Görüntüleyici — sadece bakar</option>
+              <option value="özel" ${role === "özel" ? "selected" : ""}>Özel — modül modül</option>
             </select>
           </label>
         </div>
+        <p class="muted" id="grantRoleHelp" style="margin:8px 0 0;">Yönetici bu alanda öğrenci, grup, öğretmen, ödeme ve yoklamayı yönetir. Çalışma alanını silemez ve diğer alanlarınızı göremez. Aynı kişiye her alanda ayrı rol verilebilir. Belirli branş seçerseniz yalnız o branşları görür.</p>
 
         <div id="customPerms" style="${role === "özel" ? "" : "display:none;"}">
           <p class="muted" style="margin:6px 0;">Her modül için yetki düzeyi:</p>

@@ -2282,6 +2282,10 @@ tbody tr:last-child td {
   margin-bottom: 14px;
 }
 
+.student-profile-head .btn {
+  margin-left: auto;
+}
+
 .student-profile-head strong {
   display: block;
   font-size: 18px;
@@ -3556,7 +3560,8 @@ tbody tr:last-child td {
   word-break: break-word;
 }
 
-.workspace-card-date {
+.workspace-card-date,
+.workspace-card-grants {
   margin: 0;
   font-size: 13px;
 }

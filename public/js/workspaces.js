@@ -155,6 +155,19 @@
   }
 
   const ROLE_LABELS = { yönetici: "Yönetici", eğitmen: "Eğitmen", görüntüleyici: "Görüntüleyici", özel: "Özel yetki" };
+
+  function grantSummary(workspace) {
+    const grants = Array.isArray(workspace.grants) ? workspace.grants : [];
+    if (!grants.length) return "Henüz paylaşılmadı. Paylaş ile bir kişiye açın.";
+    const shown = grants.slice(0, 3).map((grant) => {
+      const name = grant.label || grant.email || "Kişi";
+      const role = ROLE_LABELS[grant.role] || grant.role || "";
+      return role ? `${name} · ${role}` : name;
+    });
+    const extra = grants.length > shown.length ? ` +${grants.length - shown.length}` : "";
+    return `Görebilenler: ${shown.join(", ")}${extra}`;
+  }
+
   const WS_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>';
 
   function isActive(ownerId, workspaceId) {
@@ -171,8 +184,10 @@
         </div>
         <h3 class="workspace-card-name">${escapeHtml(workspace.name)}</h3>
         <p class="workspace-card-date muted">Oluşturuldu: ${escapeHtml(formatDate(workspace.createdAt))}</p>
+        <p class="workspace-card-grants muted">${grantSummary(workspace)}</p>
         <div class="workspace-card-actions">
           <button type="button" class="btn btn-primary" data-action="open-owned" data-id="${escapeHtml(workspace.workspaceId)}">Aç</button>
+          <button type="button" class="btn" data-action="share" data-id="${escapeHtml(workspace.workspaceId)}">Paylaş</button>
           <button type="button" class="btn" data-action="rename" data-id="${escapeHtml(workspace.workspaceId)}">Yeniden adlandır</button>
           <button type="button" class="btn btn-warning" data-action="delete" data-id="${escapeHtml(workspace.workspaceId)}">Sil</button>
         </div>
@@ -246,9 +261,9 @@
     render();
   }
 
-  async function selectWorkspace(ref) {
+  async function selectWorkspace(ref, nextPage) {
     await requestJson("api/workspaces/select", { method: "POST", body: JSON.stringify(ref) });
-    window.location.assign(appUrl("dashboard.html"));
+    window.location.assign(appUrl(nextPage || "dashboard.html"));
   }
 
   function createWorkspace() {
@@ -307,6 +322,7 @@
     const id = trigger.dataset.id;
     if (action === "create") return createWorkspace();
     if (action === "open-owned") return selectWorkspace({ ownerId: state.ownerId, workspaceId: id });
+    if (action === "share") return selectWorkspace({ ownerId: state.ownerId, workspaceId: id }, "permissions.html");
     if (action === "open-shared") return selectWorkspace({ ownerId: trigger.dataset.owner, ownerUsername: trigger.dataset.ownerUsername, workspaceId: id });
     if (action === "rename") return renameWorkspace(id);
     if (action === "delete") return deleteWorkspace(id);

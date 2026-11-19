@@ -233,6 +233,7 @@
       if (button.dataset.action === "edit") openGroupForm(button.dataset.id);
       if (button.dataset.action === "passive") makeGroupPassive(button.dataset.id);
       if (button.dataset.action === "activate") makeGroupActive(button.dataset.id);
+      if (button.dataset.action === "delete") deletePassiveGroup(button.dataset.id);
       if (button.dataset.action === "add-student") openAddStudentForm(button.dataset.id);
     });
     renderGroups();
@@ -301,7 +302,8 @@
                     ${canEditGroups ? `<button class="btn" data-action="edit" data-id="${group.id}">Düzenle</button>
                     ${group.status === "Aktif"
                       ? `<button class="btn btn-warning" data-action="passive" data-id="${group.id}">Pasifleştir</button>`
-                      : `<button class="btn btn-primary" data-action="activate" data-id="${group.id}">Aktifleştir</button>`
+                      : `<button class="btn btn-primary" data-action="activate" data-id="${group.id}">Aktifleştir</button>
+                         <button class="btn btn-danger" data-action="delete" data-id="${group.id}">Sil</button>`
                     }` : ""}
                   </div>
                 </td>
@@ -567,6 +569,40 @@
     app.toast("Grup aktifleştirildi.", "success");
     const _grpActBranch = (storage.getData(storage.KEYS.branches, []).find(b => b.id === group.branchId) || {}).name || group.branchId;
     window.CaYaAudit?.log("groups", "activate", `Grup aktifleştirildi: ${group.name} | Branş: ${_grpActBranch}`);
+  }
+
+  function deletePassiveGroup(groupId) {
+    if (!app.access.canEdit("groups")) return;
+
+    const groups = storage.getData(storage.KEYS.groups, []);
+    const group = groups.find((item) => item.id === groupId);
+    if (!group) return;
+
+    if (group.status !== "Pasif") {
+      app.toast("Yalnızca pasif gruplar silinebilir. Önce pasifleştirin.", "error");
+      return;
+    }
+
+    const openEnrollments = app.openEnrollments((enrollment) => enrollment.groupId === groupId);
+    if (openEnrollments.length) {
+      const who = app.describeStudents(openEnrollments);
+      app.toast(
+        `Silinemez: ${openEnrollments.length} açık öğrenci kaydı bu grupta.${who ? " " + who + "." : ""} Önce öğrencileri gruptan çıkarın.`,
+        "error"
+      );
+      return;
+    }
+
+    if (!confirm(`"${group.name}" pasif grubu kalıcı olarak silinsin mi? Bu işlem geri alınamaz.`)) return;
+
+    storage.setData(
+      storage.KEYS.groups,
+      groups.filter((item) => item.id !== groupId)
+    );
+    renderGroupsPage();
+    app.toast("Pasif grup silindi.", "success");
+    const branchName = (storage.getData(storage.KEYS.branches, []).find((item) => item.id === group.branchId) || {}).name || group.branchId;
+    window.CaYaAudit?.log("groups", "delete", `Pasif grup silindi: ${group.name} | Branş: ${branchName}`);
   }
 
   function getGroupMemberships(groupId) {

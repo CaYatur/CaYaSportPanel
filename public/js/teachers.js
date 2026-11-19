@@ -67,6 +67,7 @@
       if (button.dataset.action === "edit") openTeacherForm(button.dataset.id);
       if (button.dataset.action === "passive") makeTeacherPassive(button.dataset.id);
       if (button.dataset.action === "activate") makeTeacherActive(button.dataset.id);
+      if (button.dataset.action === "delete") deletePassiveTeacher(button.dataset.id);
     });
     renderTeacherRows();
   }
@@ -118,7 +119,8 @@
                     ${canEdit ? `<button class="btn" data-action="edit" data-id="${teacher.id}">Düzenle</button>
                     ${teacher.status === "Aktif"
                       ? `<button class="btn btn-warning" data-action="passive" data-id="${teacher.id}">Pasifleştir</button>`
-                      : `<button class="btn btn-primary" data-action="activate" data-id="${teacher.id}">Aktifleştir</button>`
+                      : `<button class="btn btn-primary" data-action="activate" data-id="${teacher.id}">Aktifleştir</button>
+                         <button class="btn btn-danger" data-action="delete" data-id="${teacher.id}">Sil</button>`
                     }` : '<span class="muted">-</span>'}
                   </div>
                 </td>
@@ -289,6 +291,41 @@
     renderTeacherRows();
     app.toast("Öğretmen aktifleştirildi.", "success");
     window.CaYaAudit?.log("teachers", "activate", `Öğretmen aktifleştirildi: ${teacher.firstName} ${teacher.lastName} | Telefon: ${teacher.phone || "-"} | Maaş: ${teacher.monthlySalary ? app.formatCurrency(teacher.monthlySalary) : "-"}`);
+  }
+
+  function deletePassiveTeacher(teacherId) {
+    if (!app.access.canEdit("teachers")) return;
+
+    const teachers = storage.getData(storage.KEYS.teachers, []);
+    const teacher = teachers.find((item) => item.id === teacherId);
+    if (!teacher) return;
+
+    if (teacher.status !== "Pasif") {
+      app.toast("Yalnızca pasif öğretmenler silinebilir. Önce pasifleştirin.", "error");
+      return;
+    }
+
+    const linkedGroups = storage.getData(storage.KEYS.groups, []).filter((group) => {
+      const ids = Array.isArray(group.instructorIds) ? group.instructorIds : [];
+      return ids.includes(teacherId);
+    });
+    if (linkedGroups.length) {
+      const names = linkedGroups.slice(0, 3).map((group) => group.name).join(", ");
+      const extra = linkedGroups.length > 3 ? ` ve ${linkedGroups.length - 3} grup daha` : "";
+      app.toast(`Silinemez: ${names}${extra} hâlâ bu öğretmene bağlı. Önce gruplardan çıkarın veya grupları silin.`, "error");
+      return;
+    }
+
+    const name = `${teacher.firstName || ""} ${teacher.lastName || ""}`.trim();
+    if (!confirm(`"${name}" pasif öğretmeni kalıcı olarak silinsin mi? Bu işlem geri alınamaz.`)) return;
+
+    storage.setData(
+      storage.KEYS.teachers,
+      teachers.filter((item) => item.id !== teacherId)
+    );
+    renderTeacherRows();
+    app.toast("Pasif öğretmen silindi.", "success");
+    window.CaYaAudit?.log("teachers", "delete", `Pasif öğretmen silindi: ${name} | Telefon: ${teacher.phone || "-"}`);
   }
 
   app.registerPage("teachers", renderTeachersPage);

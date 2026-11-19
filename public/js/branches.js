@@ -277,16 +277,14 @@
       return;
     }
 
-    const activeGroups = storage
-      .getData(storage.KEYS.groups, [])
-      .filter((group) => group.branchId === branchId && group.status === "Aktif");
-    const activeEnrollments = storage
-      .getData(storage.KEYS.enrollments, [])
-      .filter((enrollment) => enrollment.branchId === branchId && enrollment.status === "Aktif");
+    const linkedGroups = storage.getData(storage.KEYS.groups, []).filter((group) => group.branchId === branchId);
+    const openEnrollments = app.openEnrollments((enrollment) => enrollment.branchId === branchId);
 
-    if (activeGroups.length || activeEnrollments.length) {
+    if (linkedGroups.length || openEnrollments.length) {
+      const who = app.describeStudents(openEnrollments);
+      const activeGroupCount = linkedGroups.filter((group) => group.status === "Aktif").length;
       app.toast(
-        `Silinemez: ${activeGroups.length} aktif grup, ${activeEnrollments.length} aktif öğrenci kaydı bu branşa bağlı. Önce bunları kapatın.`,
+        `Silinemez: ${linkedGroups.length} grup (${activeGroupCount} aktif) ve ${openEnrollments.length} açık öğrenci kaydı bu branşa bağlı.${who ? " " + who + "." : ""} Önce grupları silin ve açık kayıtları kapatın.`,
         "error"
       );
       return;
